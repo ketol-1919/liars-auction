@@ -4,9 +4,7 @@ const socketIo = require('socket.io');
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIo(server, {
-    transports: ['websocket'],
-});
+const io = socketIo(server);
 
 const PORT = process.env.PORT || 3000;
 
@@ -35,20 +33,27 @@ const MONEY_CARDS = {
 
 let gameState = {
     players: {}, // Key: socket.id
+    hostId: null,
     deck: [],
     auctionMaster: null,
     currentAuctionCard: null,
+    declaredItemName: null,
     highestBid: {
         bidder: null,
         amount: 0,
     },
-    gamePhase: 'waiting', // waiting, auction, bidding, result
+    gamePhase: 'waiting', // waiting, auction, bidding, result, end
 };
 
 // --- Socket.IO Connection Handling ---
 
 io.on('connection', (socket) => {
     console.log(`A user connected: ${socket.id}`);
+
+    // Set host if not already set
+    if (gameState.hostId === null) {
+        gameState.hostId = socket.id;
+    }
 
     // Add new player
     const playerNumber = Object.keys(gameState.players).length + 1;
@@ -60,12 +65,18 @@ io.on('connection', (socket) => {
         dealtCard: null,
     };
     console.log(`Current players: ${Object.keys(gameState.players).length}`);
-    io.emit('update-game-state', gameState); // Notify clients of new player
+    io.emit('update-game-state', gameState); // Notify all clients of new player
 
-    // Start game when 3 players have joined
-    if (Object.keys(gameState.players).length === 3 && gameState.gamePhase === 'waiting') {
-        startGame();
-    }
+    socket.on('request-start-game', () => {
+        const playerCount = Object.keys(gameState.players).length;
+        if (socket.id === gameState.hostId) {
+            if (playerCount >= 3 && playerCount <= 4) { // Rule: 3-4 players
+                startGame();
+            } else {
+                socket.emit('error', 'ゲームを開始するには3人または4人のプレイヤーが必要です。');
+            }
+        }
+    });
 
     socket.on('declare-auction-item', ({ itemName }) => {
         if (socket.id === gameState.auctionMaster && gameState.gamePhase === 'auction') {
@@ -157,13 +168,21 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect', () => {
         console.log(`User disconnected: ${socket.id}`);
+        const wasHost = gameState.hostId === socket.id;
         delete gameState.players[socket.id];
+        
+        // If the host disconnects, assign a new host
+        if (wasHost) {
+            const playerIds = Object.keys(gameState.players);
+            gameState.hostId = playerIds.length > 0 ? playerIds[0] : null;
+        }
+
         // TODO: Handle disconnection during a game (e.g., reset game)
         io.emit('update-game-state', gameState); // Notify clients of player leaving
     });
 });
 
-// --- Game Logic Functions ---
+
 
 function resolveLiarCall(callerId) {
     gameState.gamePhase = 'result';

@@ -8,7 +8,20 @@
 </head>
 <body>
     <h1>Liar's Auction</h1>
-    <div id="game-container">
+
+    <div id="lobby">
+        <h2>ロビー</h2>
+        <p>参加中のプレイヤー:</p>
+        <ul id="lobby-player-list">
+            <!-- Connected players will be listed here -->
+        </ul>
+        <div id="start-game-controls">
+             <p id="start-game-message">ホストがゲームを開始するのを待っています...</p>
+             <button id="start-game-button" style="display: none;">ゲーム開始 (3-4人)</button>
+        </div>
+    </div>
+
+    <div id="game-container" style="display: none;">
         <div id="table">
             <h2>オークションテーブル</h2>
             <div id="auction-item">
