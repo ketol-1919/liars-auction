@@ -48,11 +48,12 @@ let gameState = {
 // --- Socket.IO Connection Handling ---
 
 io.on('connection', (socket) => {
-    console.log(`A user connected: ${socket.id}`);
+    console.log(`[Connect] ID: ${socket.id}. Current players: ${Object.keys(gameState.players).length}`);
 
     // Set host if not already set
     if (gameState.hostId === null) {
         gameState.hostId = socket.id;
+        console.log(`[Host Set] New host is ${gameState.hostId}`);
     }
 
     // Add new player
@@ -64,17 +65,22 @@ io.on('connection', (socket) => {
         pointCards: [],
         dealtCard: null,
     };
-    console.log(`Current players: ${Object.keys(gameState.players).length}`);
+    console.log(`[Player Add] Added player ${socket.id}. Total players: ${Object.keys(gameState.players).length}`);
     io.emit('update-game-state', gameState); // Notify all clients of new player
 
     socket.on('request-start-game', () => {
         const playerCount = Object.keys(gameState.players).length;
+        console.log(`[Start Request] Received from ${socket.id}. Current host: ${gameState.hostId}. Player count: ${playerCount}`);
         if (socket.id === gameState.hostId) {
             if (playerCount >= 3 && playerCount <= 4) { // Rule: 3-4 players
                 startGame();
             } else {
+                console.log(`[Start Fail] Not enough players. Emitting error.`);
                 socket.emit('error', 'ゲームを開始するには3人または4人のプレイヤーが必要です。');
             }
+        } else {
+            console.log(`[Start Fail] Requester is not the host.`);
+            socket.emit('error', 'ホストプレイヤーのみがゲームを開始できます。');
         }
     });
 
@@ -167,20 +173,49 @@ io.on('connection', (socket) => {
     });
 
     socket.on('disconnect', () => {
-        console.log(`User disconnected: ${socket.id}`);
+        console.log(`[Disconnect] ID: ${socket.id}.`);
         const wasHost = gameState.hostId === socket.id;
         delete gameState.players[socket.id];
         
         // If the host disconnects, assign a new host
         if (wasHost) {
             const playerIds = Object.keys(gameState.players);
-            gameState.hostId = playerIds.length > 0 ? playerIds[0] : null;
+            const newHostId = playerIds.length > 0 ? playerIds[0] : null;
+            gameState.hostId = newHostId;
+            console.log(`[Host Change] Old host disconnected. New host is ${newHostId}`);
         }
 
-        // TODO: Handle disconnection during a game (e.g., reset game)
+        console.log(`[Player Remove] Removed player. Total players: ${Object.keys(gameState.players).length}`);
         io.emit('update-game-state', gameState); // Notify clients of player leaving
     });
 });
+
+function startGame() {
+    console.log(`[Start Game] Entered startGame function. Preparing to start...`);
+    gameState.gamePhase = 'auction';
+
+    // 1. Shuffle deck
+    gameState.deck = [...POINT_CARDS].sort(() => Math.random() - 0.5);
+    console.log(`[Start Game] Deck shuffled.`);
+
+    // 2. Initialize players
+    const playerIds = Object.keys(gameState.players);
+    playerIds.forEach(id => {
+        gameState.players[id].money = 1000;
+        gameState.players[id].dealtCard = gameState.deck.pop();
+        gameState.players[id].pointCards = [];
+    });
+    console.log(`[Start Game] Players initialized and cards dealt.`);
+
+    // 5. Choose first auction master
+    gameState.auctionMaster = playerIds[0];
+    console.log(`[Start Game] Auction master is ${gameState.auctionMaster}.`);
+
+    // 6. Emit the initial game state to all clients
+    io.emit('game-started', gameState);
+    io.emit('update-game-state', gameState);
+    console.log(`[Start Game] 'game-started' and 'update-game-state' emitted. Game is now running.`);
+}
 
 
 
