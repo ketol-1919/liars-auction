@@ -13,6 +13,7 @@ socket.on('game-started', (gameState) => {
 });
 
 socket.on('update-game-state', (gameState) => {
+    window.gameState = gameState; // Keep global state in sync
     console.log('Received game state update:', gameState);
     if (gameState.gamePhase === 'waiting') {
         renderLobby(gameState);
@@ -48,6 +49,13 @@ socket.on('game-over', (message) => {
 socket.on('error', (message) => {
     addLogMessage('エラー: ' + message, 'error');
     alert('エラー: ' + message); // Keep alert for immediate feedback on errors
+
+    // If the host gets an error after trying to start, reset the button
+    if (myPlayerId === window.gameState.hostId) {
+        const startButton = document.getElementById('start-game-button');
+        startButton.disabled = false;
+        startButton.textContent = 'ゲーム開始 (3-4人)';
+    }
 });
 
 function addLogMessage(message, type = 'info') {
@@ -68,10 +76,17 @@ function addLogMessage(message, type = 'info') {
 }
 
 document.getElementById('start-game-button').addEventListener('click', () => {
+    const startButton = document.getElementById('start-game-button');
+    startButton.disabled = true;
+    startButton.textContent = '読み込み中...';
     socket.emit('request-start-game');
 });
 
+// Store gameState globally to access it in the error handler
+window.gameState = {};
+
 function renderLobby(gameState) {
+    window.gameState = gameState; // Update global state
     const lobbyPlayerList = document.getElementById('lobby-player-list');
     const startButton = document.getElementById('start-game-button');
     const startMessage = document.getElementById('start-game-message');
