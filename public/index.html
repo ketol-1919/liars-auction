@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Liar's Auction</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>Liar's Auction</h1>
+    <div id="game-container">
+        <div id="table">
+            <h2>オークションテーブル</h2>
+            <div id="auction-item">
+                <img id="current-auction-card" src="" alt="オークションカード" style="display: none; width: 150px; height: auto;">
+            </div>
+        </div>
+        <div id="players">
+            <h2>プレイヤー</h2>
+            <div id="player-list">
+                <!-- Player elements will be generated here by client.js -->
+            </div>
+        </div>
+        <div id="info">
+            <h2>ゲーム情報</h2>
+            <div id="game-log" style="height: 150px; overflow-y: scroll; border: 1px solid #ccc; padding: 5px; margin-bottom: 10px; background-color: #fff;">
+                <p id="game-status">Liar's Auctionへようこそ！</p>
+            </div>
+            <p id="current-master">現在の親: なし</p>
+            <p id="current-bid">現在の入札額: 0億</p>
+        </div>
+        <div id="controls">
+            <h2>操作</h2>
+            <div id="bidding-controls" style="display: none;">
+                <input type="number" id="bid-amount" placeholder="入札額(億)" min="0" step="100">
+                <button id="place-bid">入札</button>
+                <button id="call-liar">ライアー！</button>
+            </div>
+            <div id="master-controls" style="display: none;">
+                <input type="text" id="declare-item-name" placeholder="宣言するカード名">
+                <button id="declare-item">宣言する</button>
+                <button id="end-bidding" style="display: none;">入札を終了する</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="client.js"></script>
+</body>
+</html>
